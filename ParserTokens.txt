@@ -1,0 +1,89 @@
+T<type_object> = "object"
+T<type_bool> = "bool"
+T<type_int> = "int"
+T<type_float> = "float"
+T<type_string> = "string"
+T<type_list> = "list"
+T<integer>  = "0" | <digit_1_9> <digit\>*
+T<float> = [-]? <integer\> <frac\>? <exponent\>?
+T<string_literal> = "\\\"" <char\>* "\\\""
+T<null> = "null"
+T<true> = "true"
+T<false> = "false"
+T<assign> = "="
+T<add_assign> = "+="
+T<sub_assign> = "-="
+T<mul_assign> = "*="
+T<div_assign> = "\="
+T<if> = "if"
+T<elif> = "elif"
+T<else> = "else"
+T<while> = "while"
+T<for> = "for"
+T<in> = "in"
+T<range> = "range"
+T<break> = "break"
+T<continue> = "continue"
+T<return> = "return"
+T<yield> = "yield"
+T<add> = "+"
+T<sub> = "-"
+T<mul> = "*"
+T<div> = "/"
+T<binv> = "~"
+T<band> = "&"
+T<bor> = "|"
+T<bshl> = "<<"
+T<bshr> = ">>"
+T<linv> = "!"
+T<land> = "&&"
+T<lor> = "||"
+T<eq> = "=="
+T<ne> = "!="
+T<lt> = "<"
+T<le> = "<="
+T<gt> = ">"
+T<ge> = ">="
+T<lpare> = "("
+T<rpare> = ")"
+T<lbrace> = "{"
+T<rbrace> = "}"
+T<lbracket> = "["
+T<rbracket> = "]"
+T<comma> = ","
+T<colon> = ":"
+T<dot> = "."
+T<ident> = [a-zA-Z\][a-zA-Z0-9\]*
+
+<literal> = <null> | <true> | <false> | <integer> | <float> | <string_literal>
+<op_arithmatic> = <rvalue> <add> <rvalue> | <rvalue> <sub> <rvalue> | <rvalue> <mul> <rvalue> | <rvalue> <div> <rvalue>
+<op_logic> = <linv> <rvalue> | <rvalue> <land> <rvalue> | <rvalue> <lor> <rvalue> | <rvalue> <eq> <rvalue> | <rvalue> <ne> <rvalue> | <rvalue> <lt> <rvalue> | <rvalue> <le> <rvalue> | <rvalue> <gt> <rvalue> | <rvalue> <ge> <rvalue>
+<op_bit> = <binv> <rvalue> | <rvalue> <band> <rvalue> | <rvalue> <bor> <rvalue>
+<op> = <op_arithmatic> | <op_logic> | <op_bit>
+<member> = <lvalue> <dot> <ident>
+<lvalue> = <ident> | <member>
+<expr_list> = <rvalue> | <expr_list> <comma> <rvalue>
+<def_list> = <stmt_def> | <stmt_def_init> | <def_list> <comma> <stmt_def> | <def_list> <comma> <stmt_def_init>
+<expr_list_in_pares> = <lpare> <rpare> | <lpare> <expr_list> <rpare>
+<expr_map> = <stmt_assign> | <expr_map> <comma> <stmt_assign>
+<list> = <lbracket> <expr_list> <rbracket>
+<tag_list> = <lbracket> <rbracket> | <lbracket> <expr_map> <rbracket>
+<object> = <tag_list> <expr_list_in_pares> <block> | <expr_list_in_pares> <block>
+<invoke> = <ident> <expr_list_in_pares>
+<rvalue> = <literal> | <lvalue> | <op> | <invoke> | <object>
+<stmt_def> = <type_object> <ident> | <type_bool> <ident> | <type_int> <ident> | <type_float> <ident> | <type_string> <ident> | <type_list> <ident>
+<stmt_def_init> = <stmt_def> <assign> <rvalue>
+<stmt_assign> = <lvalue> <assign> <rvalue> | <lvalue> <add_assign> <rvalue> | <lvalue> <sub_assign> <rvalue> | <lvalue> <mul_assign> <rvalue> | <lvalue> <div_assign> <rvalue>
+<stmt_if> = <if> <lpare> <rvalue> <rpare> <block>
+<stmt_elif> = <elif> <lpare> <rvalue> <rpare> <block>
+<stmt_else> = <else> <block>
+<stmt_while> = <while> <lpare> <rvalue> <rpare> <block>
+<stmt_for> = <for> <lpare> <ident> <in> <ident> <rpare> <block>
+<stmt_break> = <break>
+<stmt_continue> = <continue>
+<stmt_yield> = <yield>
+<stmt_return> = <return> | <return> <rvalue>
+<stmt> = <stmt_def> | <stmt_if> | <stmt_elif> | <stmt_else> | <stmt_while> | <stmt_for> | <stmt_break> | <stmt_continue> | <stmt_yield> | <stmt_return>
+<stmts> = <stmt> | <stmt> <stmts>
+<block> = <lbrace> <rbrace> | <lbrace> <stmts> <rbrace> | <lbrace> <block> <rbrace>
+<start> = <stmts> | <block>
