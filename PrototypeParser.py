@@ -22,70 +22,67 @@ class Rule:
         line = line[:-1]
         return line
 
-class Shift:
-    def __init__( self, owner, iToken, iLastState, iNextState ):
-        self.owner = owner
-        self.iToken = iToken
-        self.iLastState = iLastState
-        self.iNextState = iNextState
+    def getReduceTokenName( self ):
+        return self.owner.tokens[self.iReduceToken].name
 
-    def isReduce( self ):
-        return self.owner.states[self.iNextState].isReduce()
+class Shift:
+    def __init__( self, owner, iTokens, iFromState, iToState ):
+        self.owner = owner
+        self.iTokens = iTokens.copy()
+        self.iFromState = iFromState
+        self.iToState = iToState
 
     def __repr__( self ):
-        return "shift from S({0}) to S({1}) by <{2}>".format( self.iLastState, self.iNextState, self.owner.tokens[self.iToken].name )
+        line = "shift from S({0}) to S({1}) by ".format( self.iFromState, self.iToState )
+        for iToken in self.iTokens:
+            token = self.owner.owner.tokens[iToken]
+            line += "<{0}> ".format( token.name )
+        line = line[:-1]
+        return line
 
 class State:
-    def __init__( self, owner, iRule, iiNextToken ):
+    def __init__( self, owner, iRule, iiLastToken ):
         self.owner = owner
         self.iRule = iRule
-        self.iiNextToken = iiNextToken
+        self.iiLastToken = iiLastToken
         self.shifts = []
 
     def __repr__( self ):
         rule = self.owner.rules[self.iRule]
         line = "<{0}> = ".format( self.owner.tokens[rule.iReduceToken].name )
-        for iiToken in range( len( rule.iTokens ) ):
+        for iiToken in range( self.iiLastToken ):
             iToken = rule.iTokens[iiToken]
-            token = self.owner.tokens[iToken]
-            if self.iiNextToken == iiToken:
-                line += ". "
-            line += "<{0}> ".format( token.name )
-            
-        if self.isReduce():
-            line += ". "
-
+            line += "<{0}> ".format( self.owner.tokens[iToken].name )
         line = line[:-1]
         line += "\n"
-
-        if self.isReduce() == False:
-            for shift in self.shifts:
-                line +=  "\t{0}\n".format( shift )
-        else:
-            line += "\treduce to {0}\n".format( self.owner.tokens[self.getReduceToken()].name )
+        for shift in self.shifts:
+            line +=  "\t{0}\n".format( shift )
 
         return line
 
-    def findShift( self, iToken, iLastState, iNextState ):
+    def findShift( self, iTokens, iFromState, iToState ):
         for iShift in range( len( self.shifts ) ):
             shift = self.shifts[iShift]
-            if shift.iToken == iToken and shift.iLastState == iLastState and shift.iNextState == iNextState:
-                return iShift
+            if shift.iFromState == iFromState and shift.iToState == iToState:
+                # compare shift.iTokens and iTokens
+                areAllTokenSame = True
+                if len( shift.iTokens ) == len( iTokens ):
+                    for iiToken in range( len( shift.iTokens ) ):
+                        if iTokens[iiToken] != shift.iTokens[iiToken]:
+                            areAllTokenSame = False
+                            break
+                if areAllTokenSame:
+                    return iShift
         return -1
 
-    def addShift( self, owner, iToken, iLastState, iToState ):
-        iShift = self.findShift( iToken, iLastState, iToState )
-        if iShift < 0:
-            self.shifts.append( Shift( owner, iToken, iLastState, iToState ) )
+    def addShift( self, iTokens, iFromState, iToState ):
+        self.shifts.append( Shift( self, iTokens, iFromState, iToState ) )
+
+    def getRule( self ):
+        return self.owner.rules[self.iRule]
 
     def getReduceToken( self ):
         return self.owner.rules[self.iRule].iReduceToken
-    
-    def isStart( self ):
-        return self.iiNextToken == 0
-
-    def isReduce( self ):
-        return len( self.shifts ) == 0
 
 class Generator:
     def __init__( self ):
@@ -103,12 +100,14 @@ class Generator:
         self.rules.append( Rule( self, iReduceToken, iTokens ) )
         return iRule
 
-    def addState( self, iRule, iiNextToken ):
-        iState = self.findState( iRule, iiNextToken )
-        if iState < 0:
-            iState = len( self.states )
-            self.states.append( State( self, iRule, iiNextToken ) )
+    def addState( self, iRule, iiLastToken ):
+        iState = len( self.states )
+        self.states.append( State( self, iRule, iiLastToken ) )
         return iState
+        # iState = self.findState( iLastRule, iNextRule, iiToken )
+        # if iState < 0:
+            
+        # return iState
 
     def findToken( self, name ):
         for iToken in range( len( self.tokens ) ):
@@ -117,10 +116,10 @@ class Generator:
                 return iToken
         return -1
 
-    def findState( self, iRule, iiNextToken ):
+    def findState( self, iReduceState, iRule, iiToken ):
         for iState in range( len( self.states ) ):
             state = self.states[iState]
-            if state.iRule == iRule and state.iiNextToken == iiNextToken:
+            if state.iReduceState == iReduceState and state.iRule == iRule and state.iiToken == iiToken:
                 return iState
         return -1
 
@@ -157,84 +156,66 @@ class Generator:
                 if len( iTokens ) > 0:
                     self.addRule( iReduceToken, iTokens )
 
-    def extractState( self, stack, iLastState, iLastTerminalToken ):
-        iRule, iiNextToken = stack[-1]
+    def extractState( self, stateStack, iRule, iiStartToken ):
         rule = self.rules[iRule]
+        iLastState = stateStack[-1] if len( stateStack ) > 0 else -1
+        lastState = self.states[iLastState] if iLastState >= 0 and iLastState < len( self.states ) else None
 
-        # debug current rule, iiNextToken
-        line = "extracting <{0}> = ".format( self.tokens[rule.iReduceToken].name )
-        for iiToken in range( len( rule.iTokens ) ):
-            token = self.tokens[rule.iTokens[iiToken]]
-            if iiToken == iiNextToken:
-                line += ". "
-            line += "<{0}> ".format( token.name )
-        if iiNextToken >= len( rule.iTokens ):
-            line += ". "
-        line = line[:-1]
-        print( line )
+        iState = self.addState( iRule, iiStartToken )
+        stateStack.append( iState )
+        state = self.states[iState]
 
-        if iiNextToken < len( rule.iTokens ):
-            iNextToken = rule.iTokens[iiNextToken]
-            nextToken = self.tokens[iNextToken]
-            if nextToken.isTerminal == False:
-                # if nextToken is not terminal
-                # for any rule reduces to iNextToken
+        print( "S({0}) <- S({1}): {2}".format( iState, iLastState, rule ) )
+
+        iShiftTokens = []
+        for iiToken in range( iiStartToken, len( rule.iTokens ) ):
+            iToken = rule.iTokens[iiToken]
+            token = self.tokens[iToken]
+
+            if token.isTerminal:
+                iShiftTokens.append( iToken )
+                iiStartToken += 1
+            else:
+                if len( iShiftTokens ) > 0:
+                    lastState.addShift( iShiftTokens, iLastState, iState )
+                    iShiftTokens.clear()
+                    print( "meet nonterminal add shift: {0}".format( lastState.shifts[-1] ) )
+
                 for iShiftRule in range( len( self.rules ) ):
                     shiftRule = self.rules[iShiftRule]
-                    if shiftRule.iReduceToken == iNextToken and iShiftRule != iRule:
+                    if shiftRule.iReduceToken == iToken:
+                        # shift to nonterminal rule
+                            
+                        # search for exist state on iShiftRule, 0
+                        # reuse the state if found
+                        iFoundState = -1
+                        for iExistState in range( len( self.states ) ):
+                            existState = self.states[iExistState]
+                            if existState.iRule == iShiftRule and existState.iiLastToken == 0:
+                                iFoundState = iExistState
                         
-                        # are we in a recursive loop
-                        found = False
-                        for e in stack:
-                            if e == ( iShiftRule, 0 ):
-                                found = True
-
-                        if found == False:
-                            # add state if not exist
-                            # iNextState = self.addState( iRule, iiNextToken )
-                            # if iLastState >= 0:
-                            #     self.states[iLastState].addShift( self, iLastTerminalToken, iLastState, iNextState )
-                            # if not in a recursive loop, recursive extract current iShiftRule
-                            stack.append( ( iShiftRule, 0 ) )
-                            self.extractState( stack, iLastState, iLastTerminalToken )
+                        if iFoundState < 0:
+                            iReturnState = self.extractState( stateStack, iShiftRule, 0 )
                         else:
-                            # if in a loop, means, current iShiftRule is already been working on, try next iShiftRule
-                            continue
-            else:
-                # if nextToken is terminal
-                # add state if not exist
-                iNextState = self.addState( iRule, iiNextToken )
-                # iLastState < 0 represents start state, skip start state
-                if iLastState >= 0:
-                    self.states[iLastState].addShift( self, iLastTerminalToken, iLastState, iNextState )
-                # we are done with this token, working on the next one in the iRule
-                stack.pop()
-                stack.append( ( iRule, iiNextToken + 1 ) )
-                self.extractState( stack, iNextState, iNextToken )
+                            # prevent recursive loop
+                            iExistShift = state.findShift( [], iState, iFoundState )
+                            if iExistShift < 0:
+                                state.addShift( [], iState, iFoundState )
 
-        elif iiNextToken == len( rule.iTokens ):
-            # iLastState, iLastTerminalToken is the end token of the rule
-            iNextState = self.addState( iRule, iiNextToken )
-            # iLastState < 0 represents start state, skip start state
-            if iLastState >= 0:
-                self.states[iLastState].addShift( self, iLastTerminalToken, iLastState, iNextState )
-
-    def mergeStates( self ):
-        # merge states with the same reduce token and same next tokens
-        for iState in range( len( self.states ) ):
-            state = self.states[iState]
-            for iShift in range( len( state.shifts ) ):
-                shift = state.shifts[i]
-
-        return
+        if len( iShiftTokens ) > 0:
+            state.addShift( iShiftTokens, iLastState, iState )
+            iShiftTokens.clear()
+            print( "end token add shift: {0}".format( state.shifts[-1] ) )
+        
+        stateStack.pop()
+        return iState
 
     def extractStates( self ):
-        # for any rule reduces to "start"
         for iRule in range( len( self.rules ) ):
             rule = self.rules[iRule]
-            if self.tokens[rule.iReduceToken].name == "start":
-                self.extractState( [( iRule, 0 )], -1, -1 )
-        return
+            if self.tokens[rule.iReduceToken].name.lower() == "start":
+                iStartState = self.addState( -1, 0 )
+                self.extractState( [iStartState], iRule, 0 )
 
     def printTokens( self ):
         print( "{0} tokens".format( len( self.tokens ) ) )
@@ -260,6 +241,4 @@ if __name__ == "__main__":
     # gen.printRules()
     gen.extractStates()
     gen.printStates()
-
-# known issues:
-# deduction stopped when there is already a state generated, should continue regardless and just don't regenerate existing state
+    # gen.mergeStates()
