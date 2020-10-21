@@ -74,10 +74,15 @@ class State:
     def __repr__( self ):
         rule = self.owner.rules[self.iRule]
         line = self.getStateTag()
-        for iiToken in range( self.iiToken ):
+        for iiToken in range( self.iiToken - 1 ):
             iToken = rule.iTokens[iiToken]
             line += "<{0}> ".format( self.owner.tokens[iToken].name )
-        line = line[:-1]
+
+        if self.stateType == StateType.Map:
+            line += ". {0}".format( self.owner.tokens[rule.iTokens[self.iiToken]].name )
+        elif self.stateType == StateType.Reduce:
+            line += "{0} .".format( self.owner.tokens[rule.iTokens[self.iiToken]].name )
+
         line += "\n"
         for shift in self.shifts:
             line +=  "\t{0}\n".format( shift )
@@ -328,11 +333,22 @@ class Generator:
         for iState in range( len( self.states ) ):
             print( ".{0}".format( self.states[iState] ) )
 
+    def parse( tokens ):
+        self.iState = 0
+
+        for iiToken in range( len( tokens ) ):
+            iToken = tokens[iiToken]
+
+            
+
+        
+
+
 if __name__ == "__main__":
     path = "./ParserTokens.txt"
     gen = Generator()
     gen.load( path )
-    # gen.printTokens()
+    gen.printTokens()
     gen.extractRules()
     gen.printRules()
     gen.extractStates()

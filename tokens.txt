@@ -1,0 +1,91 @@
+90 tokens
+T(0): T<type_object> = "object"
+T(1): T<type_bool> = "bool"
+T(2): T<type_int> = "int"
+T(3): T<type_float> = "float"
+T(4): T<type_string> = "string"
+T(5): T<type_list> = "list"
+T(6): T<integer> = "0" | <digit_1_9> <digit\>*
+T(7): T<float> = [-]? <integer\> <frac\>? <exponent\>?
+T(8): T<string_literal> = "\\\"" <char\>* "\\\""
+T(9): T<null> = "null"
+T(10): T<true> = "true"
+T(11): T<false> = "false"
+T(12): T<assign> = "="
+T(13): T<add_assign> = "+="
+T(14): T<sub_assign> = "-="
+T(15): T<mul_assign> = "*="
+T(16): T<div_assign> = "\="
+T(17): T<if> = "if"
+T(18): T<elif> = "elif"
+T(19): T<else> = "else"
+T(20): T<while> = "while"
+T(21): T<for> = "for"
+T(22): T<in> = "in"
+T(23): T<range> = "range"
+T(24): T<break> = "break"
+T(25): T<continue> = "continue"
+T(26): T<return> = "return"
+T(27): T<yield> = "yield"
+T(28): T<add> = "+"
+T(29): T<sub> = "-"
+T(30): T<mul> = "*"
+T(31): T<div> = "/"
+T(32): T<binv> = "~"
+T(33): T<band> = "&"
+T(34): T<bor> = "|"
+T(35): T<bshl> = "<<"
+T(36): T<bshr> = ">>"
+T(37): T<linv> = "!"
+T(38): T<land> = "&&"
+T(39): T<lor> = "||"
+T(40): T<eq> = "=="
+T(41): T<ne> = "!="
+T(42): T<lt> = "<"
+T(43): T<le> = "<="
+T(44): T<gt> = ">"
+T(45): T<ge> = ">="
+T(46): T<lpare> = "("
+T(47): T<rpare> = ")"
+T(48): T<lbrace> = "{"
+T(49): T<rbrace> = "}"
+T(50): T<lbracket> = "["
+T(51): T<rbracket> = "]"
+T(52): T<comma> = ","
+T(53): T<colon> = ":"
+T(54): T<dot> = "."
+T(55): T<at> = "@"
+T(56): T<ident> = [a-zA-Z\][a-zA-Z0-9\]*
+T(57): <literal> = <null> | <true> | <false> | <integer> | <float> | <string_literal>
+T(58): <op_arithmatic> = <rvalue> <add> <rvalue> | <rvalue> <sub> <rvalue> | <rvalue> <mul> <rvalue> | <rvalue> <div> <rvalue>
+T(59): <op_logic> = <linv> <rvalue> | <rvalue> <land> <rvalue> | <rvalue> <lor> <rvalue> | <rvalue> <eq> <rvalue> | <rvalue> <ne> <rvalue> | <rvalue> <lt> <rvalue> | <rvalue> <le> <rvalue> | <rvalue> <gt> <rvalue> | <rvalue> <ge> <rvalue>
+T(60): <op_bit> = <binv> <rvalue> | <rvalue> <band> <rvalue> | <rvalue> <bor> <rvalue>
+T(61): <op> = <op_arithmatic> | <op_logic> | <op_bit>
+T(62): <anchor> = <at> <ident>
+T(63): <member> = <ident> <dot> <ident> | <anchor> <dot> <ident> | <lvalue> <dot> <ident>
+T(64): <lvalue> = <ident> | <anchor> | <member>
+T(65): <expr_list> = <rvalue> | <expr_list> <comma> <rvalue>
+T(66): <def_list> = <stmt_def> | <stmt_def_init> | <def_list> <comma> <stmt_def> | <def_list> <comma> <stmt_def_init>
+T(67): <expr_list_in_pares> = <lpare> <rpare> | <lpare> <expr_list> <rpare>
+T(68): <expr_map> = <stmt_assign> | <expr_map> <comma> <stmt_assign>
+T(69): <list> = <lbracket> <expr_list> <rbracket>
+T(70): <tag_list> = <lbracket> <rbracket> | <lbracket> <expr_map> <rbracket>
+T(71): <object> = <tag_list> <expr_list_in_pares> <block> | <expr_list_in_pares> <block>
+T(72): <invoke> = <ident> <expr_list_in_pares>
+T(73): <rvalue> = <literal> | <lvalue> | <op> | <invoke> | <object>
+T(74): <stmt_def> = <type_object> <ident> | <type_bool> <ident> | <type_int> <ident> | <type_float> <ident> | <type_string> <ident> | <type_list> <ident>
+T(75): <stmt_def_init> = <stmt_def> <assign> <rvalue>
+T(76): <stmt_assign> = <lvalue> <assign> <rvalue> | <lvalue> <add_assign> <rvalue> | <lvalue> <sub_assign> <rvalue> | <lvalue> <mul_assign> <rvalue> | <lvalue> <div_assign> <rvalue>
+T(77): <stmt_if> = <if> <lpare> <rvalue> <rpare> <block>
+T(78): <stmt_elif> = <elif> <lpare> <rvalue> <rpare> <block>
+T(79): <stmt_else> = <else> <block>
+T(80): <stmt_while> = <while> <lpare> <rvalue> <rpare> <block>
+T(81): <stmt_for> = <for> <lpare> <ident> <in> <ident> <rpare> <block>
+T(82): <stmt_break> = <break>
+T(83): <stmt_continue> = <continue>
+T(84): <stmt_yield> = <yield>
+T(85): <stmt_return> = <return> | <return> <rvalue>
+T(86): <stmt> = <stmt_def> | <stmt_assign> | <stmt_if> | <stmt_elif> | <stmt_else> | <stmt_while> | <stmt_for> | <stmt_break> | <stmt_continue> | <stmt_yield> | <stmt_return>
+T(87): <stmts> = <stmt> | <stmt> <stmts>
+T(88): <block> = <lbrace> <rbrace> | <lbrace> <stmts> <rbrace> | <lbrace> <block> <rbrace>
+T(89): <start> = <stmts> | <block>
