@@ -8,6 +8,7 @@ class Token:
         self.name = name
         self.content = content
         self.isTerminal = isTerminal
+        self.usedByTokens = []
 
     def __repr__( self ):
         return "{0}<{1}> = {2}".format( "T" if self.isTerminal else "", self.name, self.content )
@@ -48,6 +49,7 @@ class StateType( Enum ):
     Unknown = 0
     Map = 1
     Reduce = -1
+    Begin = 2
     Start = 10
     End = -10
 
@@ -55,6 +57,7 @@ class StateType( Enum ):
         if self == self.Unknown: return 'U'
         if self == self.Map: return 'M'
         if self == self.Reduce: return 'R'
+        if self == self.Begin: return 'B'
         if self == self.Start: return 'S'
         if self == self.End: return 'E'
 
@@ -131,6 +134,15 @@ class Generator:
     def addRule( self, iReduceToken, iTokens ):
         iRule = len( self.rules )
         self.rules.append( Rule( self, iReduceToken, iTokens ) )
+        for iToken in iTokens:
+            token = self.tokens[iToken]
+
+            iFound = -1
+            for iUsedByToken in token.usedByTokens:
+                if iUsedByToken == iReduceToken:
+                    iFound = iUsedByToken
+            if iFound < 0:
+                token.usedByTokens.append( iReduceToken )
         return iRule
 
     def addState( self, stateType, iRule, iiToken ):
@@ -203,15 +215,25 @@ class Generator:
         def __repr__( self ):
             return "Branch({0}, {1}, {2}) -> R({3})".format( self.iRule, self.iiToken, self.owner.owner.tokens[self.owner.owner.rules[self.iRule].iTokens[self.iiToken]].name, self.iTargetRule )
 
+    class StateBranch1:
+        def __init__( self, owner, iToken, iState ):
+            self.owner = owner
+            self.iToken = iToken
+            self.iState = iState
+        
+        def __repr__( self ):
+            return "Branch(for {0})".format( self.owner.tokens[self.iToken].name )
+
     class ParsingContext:
         def __init__( self, owner ):
             self.owner = owner
             self.branchHistory = []
             self.terminals = []
-            self.iLastMapState = -1
+            self.iLastState = -1
             self.mapStates = []
             self.reduceStates = []
             self.terminalsStack = []
+            self.branchHistory1 = []
         
         def addBranch( self, branch ):
             ret = len( self.branchHistory )
@@ -226,14 +248,15 @@ class Generator:
             return -1
 
     def ntab( self, depth ):
-        return ''.join( '\t' * depth )
+        return ''.join( '  ' * depth )
 
     # investigate rule iRule at iiToken
     def extractState( self, context, iRule, depth ):
         rule = self.rules[iRule]
+        print( "{0}check {1}".format( self.ntab( depth ), rule ) )
         iParentMapState = context.mapStates[-1] if len( context.mapStates ) > 0 else None
         iParentReduceState = context.reduceStates[-1] if len( context.reduceStates ) > 0 else None
-        context.iLastMapState = iParentMapState
+        context.iLastState = iParentMapState
 
         for iiCurrentToken in range( len( rule.iTokens ) ):
             iCurrentToken = rule.iTokens[iiCurrentToken]
@@ -249,12 +272,12 @@ class Generator:
                         iMapState = self.addState( StateType.Map, iRule, iiCurrentToken )
 
                     # add shift
-                    lastState = self.states[context.iLastMapState]
-                    iFindShift = lastState.findShift( context.terminals, context.iLastMapState, iMapState )
+                    lastState = self.states[context.iLastState]
+                    iFindShift = lastState.findShift( context.terminals, context.iLastState, iMapState )
                     if iFindShift < 0:
-                        lastState.addShift( context.terminals, context.iLastMapState, iMapState )
+                        lastState.addShift( context.terminals, context.iLastState, iMapState )
                     context.terminals.clear()
-                    context.iLastMapState = iMapState
+                    context.iLastState = iMapState
 
                 # ensure reduce state
                 iReduceState = -1
@@ -265,6 +288,8 @@ class Generator:
                 else:
                     iReduceState = iParentReduceState
             
+                print( "{0}to deduce {1}".format( self.ntab( depth ), self.tokens[iCurrentToken].name ) )
+
                 # branch
                 iiRulesGenerateCurrentToken = self.findRuleGenerateToken( iCurrentToken )
                 ruleGenerateCurrentTokenCount = len( iiRulesGenerateCurrentToken )
@@ -272,28 +297,41 @@ class Generator:
                     iRuleGenerateCurrentToken = iiRulesGenerateCurrentToken[iiRuleGenerateCurrentToken];
                     branch = self.StateBranch( context, iRule, iiCurrentToken, iRuleGenerateCurrentToken )
                     iFoundBranch = context.findBranch( branch )
+
                     if iFoundBranch < 0:
                         context.addBranch( branch )
                         
-                        context.mapStates.append( context.iLastMapState )
+                        context.mapStates.append( context.iLastState )
                         context.reduceStates.append( iReduceState )
                         context.terminalsStack.append( context.terminals )
+
+                        if len( currentToken.usedByTokens ) > 0:
+                            iNextState = self.findState( StateType.Begin, iRuleGenerateCurrentToken, 0 )
+                            if iNextState < 0:
+                                iNextState = self.addState( StateType.Begin, iRuleGenerateCurrentToken, 0 )
+                            lastState = self.states[context.iLastState]
+                            iFindShift = lastState.findShift( context.terminals, context.iLastState, iNextState )
+                            if iFindShift < 0:
+                                lastState.addShift( context.terminals, context.iLastState, iNextState )
+                            context.terminals.clear()
+                            context.iLastState = iNextState
 
                         self.extractState( context, iRuleGenerateCurrentToken, depth + 1 )
 
                         # add shift
                         if len( context.terminals ) > 0:
-                            lastState = self.states[context.iLastMapState]
-                            iFindShift = lastState.findShift( context.terminals, context.iLastMapState, iReduceState )
+                            lastState = self.states[context.iLastState]
+                            iFindShift = lastState.findShift( context.terminals, context.iLastState, iReduceState )
                             if iFindShift < 0:
-                                lastState.addShift( context.terminals, context.iLastMapState, iReduceState )
-                        context.terminals.clear()
+                                lastState.addShift( context.terminals, context.iLastState, iReduceState )
+                            context.terminals.clear()
 
                         context.terminals = context.terminalsStack.pop()
                         iReduceState = context.reduceStates.pop()
-                        context.iLastMapState = context.mapStates.pop()
+                        context.iLastState = context.mapStates.pop()
+                        
                 
-                context.iLastMapState = iReduceState
+                context.iLastState = iReduceState
 
     def extractStates( self ):
         iStartState = -1
@@ -308,7 +346,7 @@ class Generator:
                     iEndState = self.addState( StateType.Reduce, iRule, 0 )
 
                 context = self.ParsingContext( self )
-                context.iLastMapState = iStartState
+                context.iLastState = iStartState
                 context.mapStates.append( iStartState )
                 context.reduceStates.append( iEndState )
                 self.extractState( context, iRule, 0 )
@@ -316,7 +354,7 @@ class Generator:
                 context.reduceStates.pop()
                 
                 if len( context.terminals ):
-                    context.iLastMapState
+                    context.iLastState
 
     def printTokens( self ):
         print( "{0} tokens".format( len( self.tokens ) ) )
